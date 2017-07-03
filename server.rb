@@ -29,7 +29,7 @@ post '/' do
       response: {
         outputSpeech: {
             type: "PlainText",
-            text: movie.plot_synopsis
+            text: "#{movie.plot_synopsis.slice(0, 140)}. You can ask who directed that, or who starred in it."
           }
       }
     }.to_json
@@ -41,11 +41,11 @@ post '/' do
     role = parsed_request["request"]["intent"]["slots"]["Role"]["value"]
 
     if role == "directed"
-      response_text = "#{movie_title} was directed by #{movie.director.join}"
+      response_text = "#{movie_title} was directed by #{movie.director.join.slice(0, 140)}. You can ask who starred in #{movie_title} or start over."
     end
 
     if role == "starred in"
-      response_text = "#{movie_title} starred #{movie.cast_members.join(", ")}"
+      response_text = "#{movie_title} starred #{movie.cast_members.join(", ").slice(0, 140)}. You can ask who directed #{movie_title} or start over."
     end
 
     {
