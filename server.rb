@@ -5,40 +5,26 @@ require 'imdb'
 post '/' do
   parsed_request = JSON.parse(request.body.read)
 
-  if parsed_request["request"]["intent"]["name"] == "AMAZON.StartOverIntent"
-    {
-      version: "1.0",
-      sessionAttributes: {},
-      response: {
-        outputSpeech: {
-          type: "PlainText",
-          text: "Okay, starting over. What movie would you like to know about?"
-        },
-        shouldEndSession: false
-      }
-    }.to_json
+  case parsed_request["request"]["intent"]["name"]
+  when "AMAZON.StartOverIntent"
+    attributes_object = {}
+    response_text = "Okay, starting over. What movie would you like to know about?"
 
-  elsif parsed_request["request"]["intent"]["name"] == "MovieFacts"
-    requested_movie = parsed_request["request"]["intent"]["slots"]["Movie"]["value"]
-    movie = Imdb::Search.new(requested_movie).movies.first
-    {
-      version: "1.0",
-      sessionAttributes: {
-        movieTitle: requested_movie
-      },
-      response: {
-        outputSpeech: {
-            type: "PlainText",
-            text: "#{movie.plot_synopsis.slice(0, 140)}. You can ask who directed that, or who starred in it."
-          }
-      }
-    }.to_json
+  when "MovieFacts"
+    movie_title = parsed_request["request"]["intent"]["slots"]["Movie"]["value"]
+    movie = Imdb::Search.new(movie_title).movies.first
+    attributes_object = {
+      movieTitle: movie_title
+    }
+    response_text = "#{movie.plot_synopsis.slice(0, 140)}. You can ask who directed that, or who starred in it."
 
-  elsif parsed_request["request"]["intent"]["name"] == "FollowUp"
+  when "FollowUp"
     movie_title = parsed_request["session"]["attributes"]["movieTitle"]
-    movie_list = Imdb::Search.new(movie_title).movies
-    movie = movie_list.first
+    movie = Imdb::Search.new(movie_title).movies.first
     role = parsed_request["request"]["intent"]["slots"]["Role"]["value"]
+    attributes_object = {
+      movieTitle: movie_title
+    }
 
     if role == "directed"
       response_text = "#{movie_title} was directed by #{movie.director.join.slice(0, 140)}. You can ask who starred in #{movie_title} or start over."
@@ -48,27 +34,19 @@ post '/' do
       response_text = "#{movie_title} starred #{movie.cast_members.join(", ").slice(0, 140)}. You can ask who directed #{movie_title} or start over."
     end
 
-    {
-      version: "1.0",
-      sessionAttributes: {
-        movieTitle: movie_title
-      },
-      response: {
-        outputSpeech: {
+  else
+    attributes_object = {}
+    response_text = "Sorry I didn't understand that"
+  end
+
+  return {
+    version: "1.0",
+    sessionAttributes: attributes_object,
+    response: {
+      outputSpeech: {
           type: "PlainText",
           text: response_text
         }
-      }
-    }.to_json
-  else
-    {
-      version: "1.0",
-      response: {
-        outputSpeech: {
-            type: "PlainText",
-            text: "Sorry I didn't understand that"
-          }
-      }
-    }.to_json
-  end
+    }
+  }.to_json
 end
